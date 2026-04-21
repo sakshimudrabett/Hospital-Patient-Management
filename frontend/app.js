@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ================= HELPERS =================
 
   function getApiBaseUrl() {
-    return "http://127.0.0.1:8000";
+    return "https://hospital-patient-management-c0n4.onrender.com";
   }
 
   function showMessage(msg, isError = false) {
