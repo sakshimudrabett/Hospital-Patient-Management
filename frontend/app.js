@@ -1,6 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-  // ================= ELEMENTS =================
   const createPatientForm = document.getElementById("createPatientForm");
   const appointmentForm = document.getElementById("appointmentForm");
 
@@ -21,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ================= HELPERS =================
 
   function getApiBaseUrl() {
-    return "https://hospital-patient-management-c0n4.onrender.com";
+    return "https://your-render-url.onrender.com"; // 🔥 replace with your actual URL
   }
 
   function showMessage(msg, isError = false) {
@@ -50,41 +49,35 @@ document.addEventListener("DOMContentLoaded", () => {
   // ================= PATIENTS =================
 
   async function loadPatients() {
-    try {
-      const data = await api("/patients/");
-      const filtered = applyFilters(data);
+    const data = await api("/patients/");
+    const filtered = applyFilters(data);
 
-      patientsTableBody.innerHTML = "";
+    patientsTableBody.innerHTML = "";
 
-      if (filtered.length === 0) {
-        patientsTableBody.innerHTML = `<tr><td colspan="6">No patients</td></tr>`;
-        return;
-      }
-
-      filtered.forEach(p => {
-        const row = document.createElement("tr");
-
-        row.innerHTML = `
-          <td>${p.id}</td>
-          <td>${p.first_name}</td>
-          <td>${p.last_name}</td>
-          <td>${p.age}</td>
-          <td>${p.gender}</td>
-          <td>
-            <button data-action="edit" data-id="${p.id}">Edit</button>
-            <button data-action="delete" data-id="${p.id}">Delete</button>
-          </td>
-        `;
-
-        patientsTableBody.appendChild(row);
-      });
-
-    } catch (err) {
-      showMessage(err.message, true);
+    if (filtered.length === 0) {
+      patientsTableBody.innerHTML = `<tr><td colspan="6">No patients</td></tr>`;
+      return;
     }
+
+    filtered.forEach(p => {
+      const row = document.createElement("tr");
+
+      row.innerHTML = `
+        <td>${p.id}</td>
+        <td>${p.first_name}</td>
+        <td>${p.last_name}</td>
+        <td>${p.age}</td>
+        <td>${p.gender}</td>
+        <td>
+          <button data-action="edit" data-id="${p.id}">Edit</button>
+          <button data-action="delete" data-id="${p.id}">Delete</button>
+        </td>
+      `;
+
+      patientsTableBody.appendChild(row);
+    });
   }
 
-  // CREATE / UPDATE PATIENT
   createPatientForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -123,7 +116,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // EDIT / DELETE + HISTORY
   patientsTableBody.addEventListener("click", async (e) => {
     const btn = e.target.closest("button");
     const row = e.target.closest("tr");
@@ -152,10 +144,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (action === "delete") {
       await api(`/patients/${id}`, { method: "DELETE" });
       await loadPatients();
+      showMessage("Patient deleted");
     }
   });
 
-  // SEARCH
   searchName.addEventListener("input", loadPatients);
 
   // ================= HISTORY =================
@@ -164,7 +156,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const data = await api(`/appointments/patient/${patientId}`);
 
     patientHistoryBody.innerHTML = "";
-    selectedPatientLabel.textContent = `History for Patient ID: ${patientId}`;
+    selectedPatientLabel.textContent = `History for Patient ${patientId}`;
 
     if (data.length === 0) {
       patientHistoryBody.innerHTML = `<tr><td colspan="4">No history</td></tr>`;
@@ -210,28 +202,29 @@ document.addEventListener("DOMContentLoaded", () => {
     const data = await api("/appointments/");
     appointmentsTableBody.innerHTML = "";
 
-    data.forEach(a => {
-      const row = document.createElement("tr");
+    data
+      .filter(a => a.status !== "completed") // 🔥 hide completed
+      .forEach(a => {
+        const row = document.createElement("tr");
 
-      row.innerHTML = `
-        <td>${a.id}</td>
-        <td>${a.patient_id}</td>
-        <td>${a.doctor_name}</td>
-        <td>${a.date_time}</td>
-        <td>
-          <select data-id="${a.id}" class="statusDropdown">
-            <option value="scheduled" ${a.status === "scheduled" ? "selected" : ""}>Scheduled</option>
-            <option value="completed" ${a.status === "completed" ? "selected" : ""}>Completed</option>
-            <option value="cancelled" ${a.status === "cancelled" ? "selected" : ""}>Cancelled</option>
-          </select>
-        </td>
-      `;
+        row.innerHTML = `
+          <td>${a.id}</td>
+          <td>${a.patient_id}</td>
+          <td>${a.doctor_name}</td>
+          <td>${a.date_time}</td>
+          <td>
+            <select data-id="${a.id}" class="statusDropdown">
+              <option value="scheduled" ${a.status === "scheduled" ? "selected" : ""}>Scheduled</option>
+              <option value="completed" ${a.status === "completed" ? "selected" : ""}>Completed</option>
+              <option value="cancelled" ${a.status === "cancelled" ? "selected" : ""}>Cancelled</option>
+            </select>
+          </td>
+        `;
 
-      appointmentsTableBody.appendChild(row);
-    });
+        appointmentsTableBody.appendChild(row);
+      });
   }
 
-  // STATUS UPDATE
   appointmentsTableBody.addEventListener("change", async (e) => {
     if (!e.target.classList.contains("statusDropdown")) return;
 
