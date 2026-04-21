@@ -1,5 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
 
+  // ================= ELEMENTS =================
+
   const createPatientForm = document.getElementById("createPatientForm");
   const appointmentForm = document.getElementById("appointmentForm");
 
@@ -17,11 +19,13 @@ document.addEventListener("DOMContentLoaded", () => {
   let editMode = false;
   let editPatientId = null;
 
-  // ================= HELPERS =================
+  // ================= CONFIG =================
 
   function getApiBaseUrl() {
-    return "https://your-render-url.onrender.com"; // 🔥 replace with your actual URL
+    return "https://your-render-url.onrender.com"; // 🔥 replace
   }
+
+  // ================= HELPERS =================
 
   function showMessage(msg, isError = false) {
     message.textContent = msg;
@@ -32,7 +36,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const res = await fetch(`${getApiBaseUrl()}${path}`, options);
     const data = await res.json().catch(() => ({}));
 
-    if (!res.ok) throw new Error(data.detail || "Request failed");
+    if (!res.ok) {
+      throw new Error(data.detail || "Request failed");
+    }
 
     return data;
   }
@@ -49,33 +55,38 @@ document.addEventListener("DOMContentLoaded", () => {
   // ================= PATIENTS =================
 
   async function loadPatients() {
-    const data = await api("/patients/");
-    const filtered = applyFilters(data);
+    try {
+      const data = await api("/patients/");
+      const filtered = applyFilters(data);
 
-    patientsTableBody.innerHTML = "";
+      patientsTableBody.innerHTML = "";
 
-    if (filtered.length === 0) {
-      patientsTableBody.innerHTML = `<tr><td colspan="6">No patients</td></tr>`;
-      return;
+      if (filtered.length === 0) {
+        patientsTableBody.innerHTML = `<tr><td colspan="6">No patients</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(p => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${p.id}</td>
+          <td>${p.first_name}</td>
+          <td>${p.last_name}</td>
+          <td>${p.age}</td>
+          <td>${p.gender}</td>
+          <td>
+            <button data-action="edit" data-id="${p.id}">Edit</button>
+            <button data-action="delete" data-id="${p.id}">Delete</button>
+          </td>
+        `;
+
+        patientsTableBody.appendChild(row);
+      });
+
+    } catch (err) {
+      showMessage(err.message, true);
     }
-
-    filtered.forEach(p => {
-      const row = document.createElement("tr");
-
-      row.innerHTML = `
-        <td>${p.id}</td>
-        <td>${p.first_name}</td>
-        <td>${p.last_name}</td>
-        <td>${p.age}</td>
-        <td>${p.gender}</td>
-        <td>
-          <button data-action="edit" data-id="${p.id}">Edit</button>
-          <button data-action="delete" data-id="${p.id}">Delete</button>
-        </td>
-      `;
-
-      patientsTableBody.appendChild(row);
-    });
   }
 
   createPatientForm.addEventListener("submit", async (e) => {
@@ -142,9 +153,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (action === "delete") {
-      await api(`/patients/${id}`, { method: "DELETE" });
-      await loadPatients();
-      showMessage("Patient deleted");
+      try {
+        await api(`/patients/${id}`, { method: "DELETE" });
+        showMessage("Patient deleted");
+        await loadPatients();
+      } catch (err) {
+        showMessage(err.message, true);
+      }
     }
   });
 
@@ -153,58 +168,50 @@ document.addEventListener("DOMContentLoaded", () => {
   // ================= HISTORY =================
 
   async function loadPatientHistory(patientId) {
-    const data = await api(`/appointments/patient/${patientId}`);
+    try {
+      const data = await api(`/appointments/patient/${patientId}`);
 
-    patientHistoryBody.innerHTML = "";
-    selectedPatientLabel.textContent = `History for Patient ${patientId}`;
+      patientHistoryBody.innerHTML = "";
+      selectedPatientLabel.textContent = `History for Patient ${patientId}`;
 
-    if (data.length === 0) {
-      patientHistoryBody.innerHTML = `<tr><td colspan="4">No history</td></tr>`;
-      return;
+      if (data.length === 0) {
+        patientHistoryBody.innerHTML = `<tr><td colspan="4">No history</td></tr>`;
+        return;
+      }
+
+      data.forEach(a => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${a.id}</td>
+          <td>${a.doctor_name}</td>
+          <td>${a.date_time}</td>
+          <td>${a.status}</td>
+        `;
+
+        patientHistoryBody.appendChild(row);
+      });
+
+    } catch (err) {
+      showMessage(err.message, true);
     }
-
-    data.forEach(a => {
-      const row = document.createElement("tr");
-
-      row.innerHTML = `
-        <td>${a.id}</td>
-        <td>${a.doctor_name}</td>
-        <td>${a.date_time}</td>
-        <td>${a.status}</td>
-      `;
-
-      patientHistoryBody.appendChild(row);
-    });
   }
 
   // ================= APPOINTMENTS =================
 
-  appointmentForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const payload = {
-      patient_id: Number(patientId.value),
-      doctor_name: doctorName.value,
-      date_time: dateTime.value
-    };
-
-    await api("/appointments/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    appointmentForm.reset();
-    await loadAppointments();
-  });
-
   async function loadAppointments() {
-    const data = await api("/appointments/");
-    appointmentsTableBody.innerHTML = "";
+    try {
+      const data = await api("/appointments/");
+      appointmentsTableBody.innerHTML = "";
 
-    data
-      .filter(a => a.status !== "completed") // 🔥 hide completed
-      .forEach(a => {
+      const activeAppointments = data.filter(a => a.status !== "completed");
+
+      if (activeAppointments.length === 0) {
+        appointmentsTableBody.innerHTML = `<tr><td colspan="5">No active appointments</td></tr>`;
+        return;
+      }
+
+      activeAppointments.forEach(a => {
         const row = document.createElement("tr");
 
         row.innerHTML = `
@@ -223,19 +230,57 @@ document.addEventListener("DOMContentLoaded", () => {
 
         appointmentsTableBody.appendChild(row);
       });
+
+    } catch (err) {
+      showMessage(err.message, true);
+    }
   }
 
+  appointmentForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const payload = {
+      patient_id: Number(patientId.value),
+      doctor_name: doctorName.value,
+      date_time: dateTime.value
+    };
+
+    try {
+      await api("/appointments/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      showMessage("Appointment created");
+      appointmentForm.reset();
+
+      await loadAppointments();
+
+    } catch (err) {
+      showMessage(err.message, true);
+    }
+  });
+
+  // STATUS UPDATE
   appointmentsTableBody.addEventListener("change", async (e) => {
     if (!e.target.classList.contains("statusDropdown")) return;
 
     const id = e.target.dataset.id;
     const status = e.target.value;
 
-    await api(`/appointments/${id}?status=${status}`, {
-      method: "PATCH"
-    });
+    try {
+      await api(`/appointments/${id}?status=${status}`, {
+        method: "PATCH"
+      });
 
-    await loadAppointments();
+      showMessage("Status updated");
+
+      await loadAppointments(); // 🔥 ensures removal if completed
+
+    } catch (err) {
+      showMessage(err.message, true);
+    }
   });
 
   // ================= INIT =================
